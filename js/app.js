@@ -438,7 +438,7 @@
     if (f) f.focus({ preventScroll: true });
   }
 
-  /** + Añadir muestra: copia matriz y análisis de la anterior. */
+  /** Añadir muestra: copia matriz y análisis de la anterior. */
   function addSample() {
     const last = current.muestras[current.muestras.length - 1];
     current.muestras.push(store.newMuestra(last));
@@ -448,7 +448,7 @@
   }
 
   /**
-   * + Entrada · Salida · Biológico: tres muestras Residual con el análisis
+   * Entrada · Salida · Biológico: tres muestras Residual con el análisis
    * de la última muestra. Las muestras finales vacías (sin Nevis, punto, hora
    * ni datos in situ) se sustituyen para no dejar huecos.
    */

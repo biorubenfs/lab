@@ -33,7 +33,7 @@
 
   /**
    * Nueva muestra. Si se pasa `base`, copia matriz y análisis
-   * (comportamiento de "+ Añadir muestra" y de "Duplicar").
+   * (comportamiento de "Añadir muestra" y de "Duplicar").
    */
   function newMuestra(base) {
     return {
