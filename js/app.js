@@ -383,7 +383,8 @@
           <input type="text" data-sfield="punto" value="${esc(m.punto)}" list="dlPuntos">
         </label>
         <label class="field no-plantilla"><span>Hora de toma</span>
-          <input type="time" data-sfield="horaToma" value="${esc(m.horaToma)}">
+          <input type="text" class="hora${horaValida(m.horaToma) ? '' : ' invalid'}" data-sfield="horaToma" value="${esc(m.horaToma)}"
+            inputmode="numeric" maxlength="5" placeholder="hh:mm" autocomplete="off" title="Formato 24 h, por ejemplo 09:30 o 17:45">
         </label>
         <label class="field"><span>Matriz</span>
           <select data-sfield="matriz">${optionsHtml(cfg.matrices, m.matriz, 'Seleccionar…')}</select>
@@ -479,6 +480,41 @@
 
   // ----------------------------------------------------------- eventos editor
 
+  // ------------------------------------------------------- hora de toma 24 h
+  // Se usa un campo de texto y no <input type="time"> porque este último muestra
+  // AM/PM o 24 h según el idioma del sistema y no se puede forzar el formato.
+
+  /** Mientras se escribe: solo dígitos y ":"; añade ":" tras la hora (09 -> 09:). */
+  function formatHoraTyping(v) {
+    let t = String(v).replace(/[^\d:]/g, '');
+    const d = t.replace(/:/g, '');
+    if (!t.includes(':') && d.length >= 3 && Number(d.slice(0, 2)) <= 23) t = d.slice(0, 2) + ':' + d.slice(2);
+    return t.slice(0, 5);
+  }
+
+  /**
+   * Al salir del campo: normaliza a hh:mm. Acepta "9" -> 09:00, "930" -> 09:30,
+   * "0930" -> 09:30, "9:5" -> no válida, "17:45" -> 17:45.
+   * Devuelve el valor normalizado o null si no es una hora válida.
+   */
+  function normalizeHora(v) {
+    const t = String(v || '').trim();
+    if (!t) return '';
+    let h, mm;
+    let m = /^(\d{1,2}):(\d{2})$/.exec(t);
+    if (m) { h = m[1]; mm = m[2]; }
+    else if ((m = /^(\d{1,2})$/.exec(t))) { h = m[1]; mm = '00'; }
+    else if ((m = /^(\d)(\d{2})$/.exec(t))) { h = m[1]; mm = m[2]; }
+    else if ((m = /^(\d{2})(\d{2})$/.exec(t))) { h = m[1]; mm = m[2]; }
+    else return null;
+    if (Number(h) > 23 || Number(mm) > 59) return null;
+    return h.padStart(2, '0') + ':' + mm;
+  }
+
+  function horaValida(v) {
+    return normalizeHora(v) !== null;
+  }
+
   function onFormInput(e) {
     const el = e.target;
     if (el.tagName === 'SELECT') return; // los select se tratan en 'change'
@@ -495,6 +531,11 @@
     if (sf) {
       const i = Number(el.closest('.sample').dataset.index);
       const m = current.muestras[i];
+      if (sf === 'horaToma') {
+        const f = formatHoraTyping(el.value);
+        if (f !== el.value) el.value = f;
+        el.classList.remove('invalid');
+      }
       if (sf.startsWith('inSitu.')) m.inSitu[sf.slice(7)] = el.value;
       else m[sf] = el.value;
       if (sf === 'nevis') {
@@ -507,6 +548,21 @@
 
   function onFormChange(e) {
     const el = e.target;
+    // Hora de toma: al salir del campo se normaliza a hh:mm (24 h) o se marca como no válida
+    if (el.dataset.sfield === 'horaToma') {
+      const i = Number(el.closest('.sample').dataset.index);
+      const h = normalizeHora(el.value);
+      if (h === null) {
+        el.classList.add('invalid');
+        toast('Hora no válida: usa el formato 24 h hh:mm (por ejemplo 09:30 o 17:45)', 'error');
+      } else {
+        el.value = h;
+        el.classList.remove('invalid');
+      }
+      current.muestras[i].horaToma = el.value;
+      saveNow();
+      return;
+    }
     if (el.tagName !== 'SELECT' || !el.dataset.sfield) return;
     const i = Number(el.closest('.sample').dataset.index);
     current.muestras[i][el.dataset.sfield] = el.value;
@@ -580,6 +636,12 @@
     if (missing.length) {
       missing[0].focus();
       toast('Completa los campos obligatorios: Cliente y Persona que entrega', 'error');
+      return;
+    }
+    const malHora = current.muestras.findIndex((m) => !horaValida(m.horaToma));
+    if (malHora >= 0) {
+      focusSample(malHora, 'horaToma');
+      toast(`La hora de toma de la muestra ${malHora + 1} no es válida: usa el formato 24 h hh:mm`, 'error');
       return;
     }
     if (!current.firma && !confirm('La solicitud no tiene firma. ¿Generar el PDF igualmente?')) return;
