@@ -361,6 +361,54 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px; }
   margin: 8px 0 40px;
 }
 
+/* ------------------------------------------------------------ plantillas */
+/* El editor cambia de modo con la clase .is-plantilla */
+#view-editor.is-plantilla .no-plantilla { display: none !important; }
+#view-editor:not(.is-plantilla) .solo-plantilla { display: none !important; }
+
+.hint { margin: -6px 0 14px; color: var(--muted); font-size: .9rem; }
+.chip.tpl { background: var(--brand-soft); color: var(--brand-dark); font-weight: 600; }
+
+/* Pestañas de Guardadas: Solicitudes / Plantillas */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin: 16px 0 4px;
+  border-bottom: 2px solid var(--border);
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 18px;
+  margin-bottom: -2px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  font-size: 1.02rem;
+  cursor: pointer;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--brand-dark); border-bottom-color: var(--brand); }
+.tab .count {
+  background: var(--pending-soft);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0 9px;
+  font-size: .85rem;
+}
+.tab.active .count { background: var(--brand-soft); color: var(--brand-dark); }
+.tab:focus-visible { outline: 3px solid rgba(61, 115, 48, .4); outline-offset: -3px; }
+.tpl-card { border-top: 3px solid var(--brand-logo); }
+.req-actions button.use { background: var(--brand); color: #fff; }
+.req-actions button.use:hover { background: var(--brand-dark); }
+
+.footer-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+
 /* ---------------------------------------------------------------- toast */
 .toast {
   position: fixed;

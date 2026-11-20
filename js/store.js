@@ -64,6 +64,8 @@
       firma: null,          // PNG en data URL
       muestras: [newMuestra()],
       pdfGeneradoEn: null,  // fecha ISO del último PDF generado
+      esPlantilla: false,   // true = plantilla reutilizable (no es una solicitud real)
+      nombrePlantilla: '',
     };
   }
 
@@ -88,6 +90,7 @@
       return n;
     });
     if (!s.muestras.length) s.muestras.push(newMuestra());
+    if (s.esPlantilla) s.firma = null; // las plantillas no guardan firma (también las antiguas)
     return s;
   }
 
@@ -145,6 +148,40 @@
     d.muestras = src.muestras.map((m) => newMuestra(m));
     save(d);
     return d;
+  }
+
+  /**
+   * Copia de una solicitud sin los datos que cambian en cada entrega:
+   * fechas de recepción y de toma, firma, y Nº Nevis y hora de toma de cada
+   * muestra. Se conserva todo lo demás (cliente, persona, ubicación,
+   * observaciones y el resto de datos de las muestras).
+   */
+  function reusableCopy(src) {
+    const d = create(); // firma: null
+    for (const k of ['cliente', 'personaEntrega', 'ubicacion', 'observaciones']) d[k] = src[k];
+    d.fechaRecepcion = '';
+    d.fechaToma = '';
+    d.muestras = src.muestras.map((m) => Object.assign(JSON.parse(JSON.stringify(m)), { nevis: '', horaToma: '' }));
+    return d;
+  }
+
+  /** Guarda una plantilla nueva a partir de una solicitud. La solicitud no cambia. */
+  function saveAsTemplate(src, nombre) {
+    const t = reusableCopy(src);
+    t.esPlantilla = true;
+    t.nombrePlantilla = nombre;
+    save(t);
+    return t;
+  }
+
+  /** Crea y guarda una solicitud nueva a partir de una plantilla (recepción = hoy). */
+  function fromTemplate(id) {
+    const t = get(id);
+    if (!t) return null;
+    const s = reusableCopy(t);
+    s.fechaRecepcion = today();
+    save(s);
+    return s;
   }
 
   /** ¿La muestra tiene datos propios? (matriz y análisis cuentan como plantilla) */
@@ -217,7 +254,7 @@
   }
 
   LGA.store = {
-    today, create, newMuestra, all, get, save, remove, duplicate,
+    today, create, newMuestra, all, get, save, remove, duplicate, saveAsTemplate, fromTemplate,
     sampleHasData, isBlank, nevisStatus, matrizLabel, analisisLabel, exportData, importData,
   };
 })();

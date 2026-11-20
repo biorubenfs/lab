@@ -19,10 +19,18 @@
     <!-- ============================== GUARDADAS ============================== -->
     <section id="view-list" class="view">
       <div class="list-toolbar">
-        <button type="button" id="btnNew" class="btn primary big">+ Nueva solicitud</button>
+        <button type="button" id="btnNew" class="btn primary big">Nueva solicitud</button>
         <input type="search" id="search" class="search" placeholder="Buscar cliente, ubicación o persona…" aria-label="Buscar">
         <button type="button" class="btn big" data-template="normal" title="PDF en blanco con campos rellenables (10 muestras). Matriz y Análisis admiten escribir texto libre en el desplegable">Plantilla PDF</button>
         <button type="button" class="btn big" data-template="otro" title="PDF en blanco con campos rellenables (10 muestras). Matriz y Análisis con opción Otra/Otro y un campo para escribir el valor">Plantilla PDF (con «Otro»)</button>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Tipo de elemento guardado">
+        <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="solicitudes">
+          Solicitudes <span class="count" id="countSolicitudes"></span>
+        </button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-tab="plantillas">
+          Plantillas <span class="count" id="countPlantillas"></span>
+        </button>
       </div>
       <p id="listSummary" class="list-summary"></p>
       <div id="list"></div>
@@ -39,16 +47,22 @@
     <section id="view-editor" class="view" hidden>
       <div class="editor-bar">
         <button type="button" class="btn ghost" data-go="list">← Guardadas</button>
+        <span class="chip tpl solo-plantilla">Plantilla</span>
         <span id="statusBadge" class="badge"></span>
         <span id="pdfState" class="chip" hidden></span>
         <span id="saveState" class="save-state" aria-live="polite"></span>
-        <button type="button" class="btn primary" data-action="pdf">Generar PDF</button>
+        <button type="button" class="btn primary no-plantilla" data-action="pdf">Generar PDF</button>
       </div>
 
       <form id="form" autocomplete="off" novalidate>
         <section class="card">
-          <h2>Datos de la solicitud</h2>
+          <h2 id="editorTitle">Datos de la solicitud</h2>
+          <p class="hint solo-plantilla">Las plantillas no guardan las fechas de recepción y de toma, la firma, ni el Nº Nevis y la hora de toma de las muestras: se rellenan en cada solicitud.</p>
           <div class="grid grid-2">
+            <label class="field span-2 solo-plantilla">
+              <span>Nombre de la plantilla</span>
+              <input type="text" data-field="nombrePlantilla" placeholder="Ej.: Somacyl · Tudela de Duero (residuales)">
+            </label>
             <label class="field">
               <span>Cliente <b class="req">*</b></span>
               <input type="text" data-field="cliente" list="dlClientes" required>
@@ -61,11 +75,11 @@
               <span>Ubicación</span>
               <input type="text" data-field="ubicacion" list="dlUbicaciones">
             </label>
-            <label class="field">
+            <label class="field no-plantilla">
               <span>Fecha de recepción</span>
               <input type="date" data-field="fechaRecepcion">
             </label>
-            <label class="field">
+            <label class="field no-plantilla">
               <span>Fecha de toma</span>
               <input type="date" data-field="fechaToma">
             </label>
@@ -85,7 +99,7 @@
           </div>
         </section>
 
-        <section class="card">
+        <section class="card no-plantilla">
           <h2>Firma de la persona que entrega</h2>
           <div class="sig-wrap">
             <canvas id="sigCanvas" aria-label="Zona de firma"></canvas>
@@ -97,8 +111,11 @@
         </section>
 
         <div class="editor-footer">
-          <button type="button" class="btn danger ghost" data-action="delete">Eliminar solicitud</button>
-          <button type="button" class="btn primary big" data-action="pdf">Generar PDF</button>
+          <button type="button" class="btn danger ghost" data-action="delete" id="btnDelete">Eliminar solicitud</button>
+          <span class="footer-actions">
+            <button type="button" class="btn big no-plantilla" data-action="save-template">Guardar como plantilla</button>
+            <button type="button" class="btn primary big no-plantilla" data-action="pdf">Generar PDF</button>
+          </span>
         </div>
       </form>
     </section>

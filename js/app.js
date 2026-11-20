@@ -38,6 +38,7 @@
   let isNew = false;    // aún no guardada en localStorage
   let saveTimer = null;
   let sig = null;
+  let activeTab = 'solicitudes'; // pestaña de Guardadas: 'solicitudes' | 'plantillas'
 
   // ------------------------------------------------------------------- toast
 
@@ -81,24 +82,75 @@
     renderList();
   }
 
+  /** Cambia de pestaña en Guardadas. */
+  function setTab(tab) {
+    activeTab = tab === 'plantillas' ? 'plantillas' : 'solicitudes';
+    renderList();
+  }
+
+  /** Pantalla Guardadas: pestañas Solicitudes (agrupadas por cliente) y Plantillas. */
   function renderList() {
     const q = norm($('#search').value);
+    const matches = (s) => !q || norm([s.nombrePlantilla, s.cliente, s.ubicacion, s.personaEntrega].join(' ')).includes(q);
     const all = store.all();
-    const items = all.filter((s) => !q || norm([s.cliente, s.ubicacion, s.personaEntrega].join(' ')).includes(q));
+    const solicitudes = all.filter((s) => !s.esPlantilla);
+    const plantillas = all.filter((s) => s.esPlantilla);
 
-    const pendientes = all.filter((s) => !store.nevisStatus(s).complete).length;
-    $('#listSummary').textContent = all.length
-      ? `${all.length} solicitud${all.length === 1 ? '' : 'es'} guardada${all.length === 1 ? '' : 's'} · ${pendientes} con Nevis pendientes`
-      : '';
+    // Pestañas: estado y contadores
+    $$('[data-tab]').forEach((b) => {
+      const on = b.dataset.tab === activeTab;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    $('#countSolicitudes').textContent = solicitudes.length;
+    $('#countPlantillas').textContent = plantillas.length;
 
-    if (!items.length) {
-      $('#list').innerHTML = `<div class="empty">${all.length
-        ? 'Ninguna solicitud coincide con la búsqueda.'
-        : 'No hay solicitudes guardadas.<br>Pulsa <b>+ Nueva solicitud</b> para registrar una recepción de muestras.'}</div>`;
+    if (activeTab === 'plantillas') {
+      $('#listSummary').textContent = '';
+      const items = plantillas.filter(matches)
+        .sort((a, b) => templateName(a).localeCompare(templateName(b), 'es'));
+      $('#list').innerHTML = items.length
+        ? `<div class="cards">${items.map(templateCardHtml).join('')}</div>`
+        : `<div class="empty">${plantillas.length
+          ? 'Ninguna plantilla coincide con la búsqueda.'
+          : 'No hay plantillas.<br>Para crear una, abre una solicitud y pulsa <b>Guardar como plantilla</b>.'}</div>`;
       return;
     }
 
-    // Agrupar por cliente (sin distinguir mayúsculas ni acentos)
+    const pendientes = solicitudes.filter((s) => !store.nevisStatus(s).complete).length;
+    $('#listSummary').textContent = solicitudes.length
+      ? `${solicitudes.length} solicitud${solicitudes.length === 1 ? '' : 'es'} guardada${solicitudes.length === 1 ? '' : 's'} · ${pendientes} con Nevis pendientes`
+      : '';
+    $('#list').innerHTML = requestsHtml(solicitudes.filter(matches), solicitudes.length);
+  }
+
+  function templateName(t) {
+    return String(t.nombrePlantilla || '').trim() ||
+      [t.cliente, t.ubicacion].filter((v) => String(v || '').trim()).join(' · ') || 'Plantilla sin nombre';
+  }
+
+  function templateCardHtml(t) {
+    const n = t.muestras.length;
+    const meta = [t.cliente, t.ubicacion].filter((v) => String(v || '').trim()).map(esc).join(' · ');
+    return `<article class="req-card tpl-card" data-id="${esc(t.id)}">
+      <button type="button" class="req-main" data-action="open" title="Editar plantilla">
+        <span class="req-loc">${esc(templateName(t))}</span>
+        <span class="req-meta">${meta ? meta + ' · ' : ''}${n} muestra${n === 1 ? '' : 's'}</span>
+      </button>
+      <div class="req-actions">
+        <button type="button" class="use" data-action="use">Usar plantilla</button>
+        <button type="button" class="del" data-action="del">Eliminar</button>
+      </div>
+    </article>`;
+  }
+
+  /** Solicitudes agrupadas por cliente (sin distinguir mayúsculas ni acentos). */
+  function requestsHtml(items, total) {
+    if (!items.length) {
+      return `<div class="empty">${total
+        ? 'Ninguna solicitud coincide con la búsqueda.'
+        : 'No hay solicitudes guardadas.<br>Pulsa <b>Nueva solicitud</b> para registrar una recepción de muestras.'}</div>`;
+    }
     const groups = new Map();
     for (const s of items) {
       const key = norm(s.cliente);
@@ -107,7 +159,7 @@
     }
     const sorted = Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name, 'es'));
 
-    $('#list').innerHTML = sorted.map((g) => {
+    return sorted.map((g) => {
       g.items.sort((a, b) =>
         String(b.fechaRecepcion).localeCompare(String(a.fechaRecepcion)) ||
         String(b.updatedAt).localeCompare(String(a.updatedAt)));
@@ -139,6 +191,9 @@
   }
 
   function confirmDelete(s) {
+    if (s.esPlantilla) {
+      return confirm(`¿Eliminar la plantilla «${templateName(s)}»?\n\nLas solicitudes creadas con ella no se ven afectadas.`);
+    }
     const quien = [s.cliente || 'sin cliente', s.ubicacion, fmtDate(s.fechaRecepcion)].filter(Boolean).join(' · ');
     const aviso = s.pdfGeneradoEn
       ? 'Asegúrate de que el PDF ya está subido a la carpeta de red.'
@@ -162,12 +217,20 @@
       } catch (err) {
         toast('No se pudo duplicar: ' + err.message, 'error');
       }
+    } else if (action === 'use') {
+      try {
+        const s = store.fromTemplate(id);
+        toast('Solicitud creada desde la plantilla con fecha de hoy', 'ok');
+        location.hash = '#/s/' + encodeURIComponent(s.id);
+      } catch (err) {
+        toast('No se pudo usar la plantilla: ' + err.message, 'error');
+      }
     } else if (action === 'del') {
       const s = store.get(id);
       if (s && confirmDelete(s)) {
         store.remove(id);
         renderList();
-        toast('Solicitud eliminada');
+        toast(s.esPlantilla ? 'Plantilla eliminada' : 'Solicitud eliminada');
       }
     }
   }
@@ -209,7 +272,12 @@
     isNew = newFlag;
     $('#view-list').hidden = true;
     $('#view-editor').hidden = false;
-    document.title = (sol.cliente || 'Nueva solicitud') + ' · LGA';
+    activeTab = sol.esPlantilla ? 'plantillas' : 'solicitudes'; // pestaña al volver a Guardadas
+    // Modo plantilla: oculta fechas, Nº Nevis, hora de toma, estado y PDF (ver style.css)
+    $('#view-editor').classList.toggle('is-plantilla', !!sol.esPlantilla);
+    $('#editorTitle').textContent = sol.esPlantilla ? 'Datos de la plantilla' : 'Datos de la solicitud';
+    $('#btnDelete').textContent = sol.esPlantilla ? 'Eliminar plantilla' : 'Eliminar solicitud';
+    document.title = (sol.esPlantilla ? 'Plantilla: ' + templateName(sol) : (sol.cliente || 'Nueva solicitud')) + ' · LGA';
 
     $$('[data-field]').forEach((el) => {
       el.value = current[el.dataset.field] || '';
@@ -262,8 +330,10 @@
 
   function updateStatus() {
     if (!current) return;
-    const nb = nevisBadge(current);
     const badge = $('#statusBadge');
+    badge.hidden = !!current.esPlantilla;
+    if (current.esPlantilla) { $('#pdfState').hidden = true; return; }
+    const nb = nevisBadge(current);
     badge.className = 'badge ' + nb.cls;
     badge.textContent = (nb.cls === 'complete' ? 'Completa · ' : 'Pendiente · ') + nb.text;
     const pc = isNew ? null : pdfChip(current);
@@ -306,13 +376,13 @@
         <button type="button" class="icon-btn" data-action="remove-sample" title="Eliminar muestra" aria-label="Eliminar muestra ${i + 1}">✕</button>
       </div>
       <div class="grid sample-grid">
-        <label class="field"><span>Nº Nevis</span>
+        <label class="field no-plantilla"><span>Nº Nevis</span>
           <input type="text" class="nevis${nevisPending ? ' is-pending' : ''}" data-sfield="nevis" value="${esc(m.nevis)}" placeholder="Pendiente">
         </label>
         <label class="field"><span>Punto de muestreo</span>
           <input type="text" data-sfield="punto" value="${esc(m.punto)}" list="dlPuntos">
         </label>
-        <label class="field"><span>Hora de toma</span>
+        <label class="field no-plantilla"><span>Hora de toma</span>
           <input type="time" data-sfield="horaToma" value="${esc(m.horaToma)}">
         </label>
         <label class="field"><span>Matriz</span>
@@ -416,7 +486,7 @@
     if (el.dataset.field) {
       current[el.dataset.field] = el.value;
       el.classList.remove('invalid');
-      if (el.dataset.field === 'cliente') document.title = (el.value || 'Nueva solicitud') + ' · LGA';
+      if (el.dataset.field === 'cliente' && !current.esPlantilla) document.title = (el.value || 'Nueva solicitud') + ' · LGA';
       scheduleSave();
       return;
     }
@@ -460,7 +530,30 @@
       case 'remove-sample': removeSample(Number(btn.closest('.sample').dataset.index)); break;
       case 'clear-sig': sig.clear(); break;
       case 'pdf': generatePdf(); break;
+      case 'save-template': saveAsTemplate(); break;
       case 'delete': deleteCurrent(); break;
+    }
+  }
+
+  /** Guarda una plantilla a partir de la solicitud abierta (la solicitud no cambia). */
+  function saveAsTemplate() {
+    saveNow();
+    if (store.isBlank(current)) {
+      toast('Rellena algún dato antes de guardar la solicitud como plantilla', 'error');
+      return;
+    }
+    const propuesta = [current.cliente, current.ubicacion].filter((v) => String(v || '').trim()).join(' · ');
+    const nombre = prompt(
+      'Nombre de la plantilla:\n(no se guardan las fechas, la firma, los Nº Nevis ni las horas de toma)',
+      propuesta
+    );
+    if (nombre === null) return; // cancelado
+    try {
+      const t = store.saveAsTemplate(current, nombre.trim() || propuesta);
+      toast(`Plantilla «${templateName(t)}» guardada. Está en la pantalla Guardadas.`, 'ok');
+    } catch (err) {
+      console.error(err);
+      toast('No se pudo guardar la plantilla: ' + err.message, 'error');
     }
   }
 
@@ -547,6 +640,7 @@
     // Guardadas
     $('#btnNew').addEventListener('click', () => { location.hash = '#/nueva'; });
     $('#search').addEventListener('input', renderList);
+    $$('[data-tab]').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
     $('#list').addEventListener('click', onListClick);
     $('#btnExport').addEventListener('click', exportBackup);
     // Plantillas rellenables: "normal" y "otro" (opción B). Pendiente de elegir una.
