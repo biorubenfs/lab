@@ -1,0 +1,14 @@
+# Sistema operativo / editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+
+# Configuración local de Claude Code
+.claude/settings.local.json
+
+# PDFs y copias de seguridad generados al probar la app
+*.pdf
+*_copia_solicitudes_lga.json

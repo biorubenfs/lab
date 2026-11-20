@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Solicitudes de análisis · LGA</title>
+  <link rel="icon" id="favicon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a href="#" class="brand" aria-label="Ir a solicitudes guardadas">
+      <span class="brand-logo" id="brandLogo"></span>
+      <span class="brand-title">Solicitudes de análisis</span>
+    </a>
+  </header>
+
+  <main>
+    <!-- ============================== GUARDADAS ============================== -->
+    <section id="view-list" class="view">
+      <div class="list-toolbar">
+        <button type="button" id="btnNew" class="btn primary big">+ Nueva solicitud</button>
+        <input type="search" id="search" class="search" placeholder="Buscar cliente, ubicación o persona…" aria-label="Buscar">
+        <button type="button" class="btn big" data-template="normal" title="PDF en blanco con campos rellenables (10 muestras). Matriz y Análisis admiten escribir texto libre en el desplegable">Plantilla PDF</button>
+        <button type="button" class="btn big" data-template="otro" title="PDF en blanco con campos rellenables (10 muestras). Matriz y Análisis con opción Otra/Otro y un campo para escribir el valor">Plantilla PDF (con «Otro»)</button>
+      </div>
+      <p id="listSummary" class="list-summary"></p>
+      <div id="list"></div>
+      <footer class="list-footer">
+        <span class="muted">Copia de seguridad de las solicitudes guardadas en este equipo:</span>
+        <button type="button" id="btnExport" class="btn ghost small">Exportar copia</button>
+        <label class="btn ghost small">Importar copia
+          <input type="file" id="fileImport" accept=".json,application/json" hidden>
+        </label>
+      </footer>
+    </section>
+
+    <!-- =============================== EDITOR =============================== -->
+    <section id="view-editor" class="view" hidden>
+      <div class="editor-bar">
+        <button type="button" class="btn ghost" data-go="list">← Guardadas</button>
+        <span id="statusBadge" class="badge"></span>
+        <span id="pdfState" class="chip" hidden></span>
+        <span id="saveState" class="save-state" aria-live="polite"></span>
+        <button type="button" class="btn primary" data-action="pdf">Generar PDF</button>
+      </div>
+
+      <form id="form" autocomplete="off" novalidate>
+        <section class="card">
+          <h2>Datos de la solicitud</h2>
+          <div class="grid grid-2">
+            <label class="field">
+              <span>Cliente <b class="req">*</b></span>
+              <input type="text" data-field="cliente" list="dlClientes" required>
+            </label>
+            <label class="field">
+              <span>Persona que entrega <b class="req">*</b></span>
+              <input type="text" data-field="personaEntrega" list="dlPersonas" required>
+            </label>
+            <label class="field">
+              <span>Ubicación</span>
+              <input type="text" data-field="ubicacion" list="dlUbicaciones">
+            </label>
+            <label class="field">
+              <span>Fecha de recepción</span>
+              <input type="date" data-field="fechaRecepcion">
+            </label>
+            <label class="field">
+              <span>Fecha de toma</span>
+              <input type="date" data-field="fechaToma">
+            </label>
+            <label class="field span-2">
+              <span>Observaciones</span>
+              <textarea data-field="observaciones" rows="2"></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Muestras <span id="sampleCount" class="muted"></span></h2>
+          <div id="samples"></div>
+          <div class="sample-actions">
+            <button type="button" class="btn" data-action="add-sample">+ Añadir muestra</button>
+            <button type="button" class="btn" data-action="add-residual">+ Entrada · Salida · Biológico</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Firma de la persona que entrega</h2>
+          <div class="sig-wrap">
+            <canvas id="sigCanvas" aria-label="Zona de firma"></canvas>
+            <span id="sigHint" class="sig-hint">Firme aquí con el dedo, lápiz o ratón</span>
+          </div>
+          <div class="sig-actions">
+            <button type="button" class="btn ghost small" data-action="clear-sig">Borrar firma</button>
+          </div>
+        </section>
+
+        <div class="editor-footer">
+          <button type="button" class="btn danger ghost" data-action="delete">Eliminar solicitud</button>
+          <button type="button" class="btn primary big" data-action="pdf">Generar PDF</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <datalist id="dlClientes"></datalist>
+  <datalist id="dlPersonas"></datalist>
+  <datalist id="dlUbicaciones"></datalist>
+  <datalist id="dlPuntos"></datalist>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Scripts clásicos (no módulos): funcionan abriendo el fichero con doble clic -->
+  <script src="lib/pdf-lib.min.js"></script>
+  <script src="assets/logo.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/signature.js"></script>
+  <script src="js/pdf.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
